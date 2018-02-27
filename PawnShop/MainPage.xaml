@@ -7,7 +7,61 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
 
-    <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+    <NavigationView x:Name="nv"
+                    ItemInvoked="nv_ItemInvoked"
+                    SelectionChanged="nv_SelectionChanged"
+                    Loaded="nv_Loaded"
+                    Canvas.ZIndex="0">
+        <NavigationView.MenuItems>
+            <NavigationViewItem x:Uid="niHome" Content="Home" Tag="home">
+                <NavigationViewItem.Icon>
+                    <FontIcon Glyph="&#xE10F;" />
+                </NavigationViewItem.Icon>
+            </NavigationViewItem>
+            <NavigationViewItemSeparator />
+            <NavigationViewItem x:Uid="niScan" Icon="Scan" Content="Scan" Tag="scan" />
+            <NavigationViewItem x:Uid="niScans" Icon="Folder" Content="Scans" Tag="scans" />
+            <NavigationViewItem x:Uid="niStore" Icon="Shop" Content="Store" Tag="store" />
+        </NavigationView.MenuItems>
 
-    </Grid>
+        <NavigationView.AutoSuggestBox>
+            <AutoSuggestBox x:Name="asb" QueryIcon="Find" />
+        </NavigationView.AutoSuggestBox>
+
+        <NavigationView.HeaderTemplate>
+            <DataTemplate>
+                <Grid Margin="24,10,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Style="{StaticResource TitleTextBlockStyle}"
+                               FontSize="28"
+                               VerticalAlignment="Center"
+                               Text="PawnShop" />
+                    <CommandBar Grid.Column="1"
+                                HorizontalAlignment="Right"
+                                VerticalAlignment="Top"
+                                DefaultLabelPosition="Right"
+                                Background="{ThemeResource SystemControlBackgroundAltHighBrush}">
+                    </CommandBar>
+                </Grid>
+            </DataTemplate>
+        </NavigationView.HeaderTemplate>
+
+        <NavigationView.PaneFooter>
+            <HyperlinkButton x:Name="hbtnMoreInfo"
+                             Content="More Info"
+                             Click="hbtnMoreInfo_Click"
+                             Margin="12,0" />
+        </NavigationView.PaneFooter>
+
+        <Frame x:Name="frmContent" Margin="24">
+            <Frame.ContentTransitions>
+                <TransitionCollection>
+                    <NavigationThemeTransition />
+                </TransitionCollection>
+            </Frame.ContentTransitions>
+        </Frame>
+    </NavigationView>
 </Page>

@@ -1,0 +1,35 @@
+﻿<Page
+    x:Class="PawnShop.Pages.ScansPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:PawnShop.Pages"
+    xmlns:controls="using:Microsoft.Toolkit.Uwp.UI.Controls"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:data="using:PawnShop.Models"
+    mc:Ignorable="d" Loaded="Page_Loaded">
+
+    <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+        <ListView  ItemsSource="{x:Bind Scans}" x:Name="lvScans" SelectionChanged="lvScans_SelectionChanged" SelectionMode="Extended" HorizontalAlignment="Stretch" Margin="0,0,0,50" VerticalAlignment="Stretch">
+            <ListView.ItemTemplate>
+                <DataTemplate x:DataType="data:Scan">
+                    <controls:DockPanel HorizontalAlignment="Stretch">
+                        <StackPanel Orientation="Vertical">
+                            <TextBlock Text="{x:Bind Account}" Style="{ThemeResource BaseTextBlockStyle}" />
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{x:Bind Pledges.Count}" />
+                                <TextBlock Text=" Pledges found" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="at  " />
+                                <TextBlock Text="{x:Bind Date}" />
+                            </StackPanel>
+                        </StackPanel>
+                        <!--Button IsEnabled="True" x:Name="btnDelete" Click="btnDelete_Click" Content="Delete" Margin="0,0,0,0" HorizontalAlignment="Right" /-->
+                    </controls:DockPanel>
+                </DataTemplate>
+            </ListView.ItemTemplate>
+        </ListView>
+        <Button IsEnabled="True" x:Name="btnExport" Click="btnExport_Click" Content="Export" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="0,0,0,0" />
+    </Grid>
+</Page>
