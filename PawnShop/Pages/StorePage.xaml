@@ -13,7 +13,9 @@
                   BorderBrush="Black" 
                   BorderThickness="1" 
                   SelectionMode="Single"
-                  SingleSelectionFollowsFocus="False">
+                  SingleSelectionFollowsFocus="False"
+                  IsItemClickEnabled="True"
+                  ItemClick="ProductsListView_ItemClick">
             <ListView.ItemTemplate>
                 <DataTemplate>
                     <StackPanel Margin="12">

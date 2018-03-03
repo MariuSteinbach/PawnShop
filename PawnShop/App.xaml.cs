@@ -4,12 +4,16 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices.WindowsRuntime;
+using System.Runtime.Serialization;
+using System.Runtime.Serialization.Formatters.Binary;
 using Windows.ApplicationModel;
 using Windows.ApplicationModel.Activation;
 using Windows.ApplicationModel.AppService;
 using Windows.ApplicationModel.Background;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
+using Windows.Storage;
+using Windows.UI.Popups;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Controls.Primitives;
@@ -26,6 +30,7 @@ namespace PawnShop
     sealed partial class App : Application
     {
         public static List<Scan> Scans { get; set; }
+        public static Config Config { get; set; }
 
         // Excel Interop
         public static BackgroundTaskDeferral AppServiceDeferral;
@@ -39,11 +44,73 @@ namespace PawnShop
         {
             this.InitializeComponent();
             Scans = new List<Scan>();
+            Config = new Config();
+            LoadConfig();
+            LoadScans();
 
             AppServiceDeferral = null;
             Connection = null;
 
             this.Suspending += OnSuspending;
+        }
+
+        public async void LoadConfig()
+        {
+            if(! await Config.Load())
+            {
+                Config = new Config
+                {
+                    Exports = 0
+                };
+                Config.Save();
+            }
+        }
+
+        private async void LoadScans()
+        {
+            IReadOnlyList<StorageFile> storageFiles = null;
+            try
+            {
+                storageFiles = await ApplicationData.Current.LocalFolder.GetFilesAsync();
+                foreach (StorageFile Scan in storageFiles.Where(f => f.Name.Split('.').Last() == "scan"))
+                {
+                    FileStream fs = new FileStream(Scan.Path, FileMode.Open, FileAccess.Read, FileShare.Read);
+                    MemoryStream ms = new MemoryStream();
+                    BinaryFormatter bf = new BinaryFormatter();
+                    Byte[] encrypted = null;
+                    try
+                    {
+                        encrypted = new Byte[fs.Length];
+                        await fs.ReadAsync(encrypted, 0, Convert.ToInt32(fs.Length));
+                    }
+                    catch (SerializationException e)
+                    {
+                        var dialog = new MessageDialog("Failed to load scans. Error: " + e.Message);
+
+                        await dialog.ShowAsync();
+                        throw;
+                    }
+                    finally
+                    {
+                        fs.Close();
+                    }
+                    Byte[] decrypted = Crypter.Decrypt(encrypted);
+                    ms.Write(decrypted, 0, decrypted.Length);
+                    ms.Seek(0, SeekOrigin.Begin);
+                    Scan LoadedScan = (Scan)bf.Deserialize(ms);
+                    if (Scans.Find(s => s.Date == LoadedScan.Date) == null)
+                    {
+                        Scans.Add(LoadedScan);
+                    }
+
+                }
+            }
+            catch (Exception e)
+            {
+                var dialog = new MessageDialog("Failed to load scans. Error: " + e.Message);
+
+                await dialog.ShowAsync();
+            }
         }
 
         protected override void OnBackgroundActivated(BackgroundActivatedEventArgs args)

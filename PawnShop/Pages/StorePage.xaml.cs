@@ -25,16 +25,24 @@ namespace PawnShop.Pages
     /// </summary>
     public sealed partial class StorePage : Page
     {
-        private StoreContext context = StoreContext.GetDefault();
+        private HashSet<Guid> consumedTransactionIds = new HashSet<Guid>();
+        private StoreContext context = null;
+        private int numberOfConsumablesPurchased = 0;
         public StorePage()
         {
             this.InitializeComponent();
-            GetAppInfo();
             GetAssociatedProducts();
         }
 
         private async void GetAssociatedProducts()
         {
+            if (context == null)
+            {
+                context = StoreContext.GetDefault();
+                // If your app is a desktop app that uses the Desktop Bridge, you
+                // may need additional code to configure the StoreContext object.
+                // For more info, see https://aka.ms/storecontext-for-desktop.
+            }
             // Create a filtered list of the product AddOns I care about
             string[] filterList = new string[] { "Consumable", "Durable", "UnmanagedConsumable" };
             StoreProductQueryResult addOns = null;
@@ -95,7 +103,122 @@ namespace PawnShop.Pages
 
             await dialog.ShowAsync();
         }
+
+        private async void ProductsListView_ItemClick(object sender, ItemClickEventArgs e)
+        {
+            ItemDetails Item = (ItemDetails)e.ClickedItem;
+            if (context == null)
+            {
+                context = StoreContext.GetDefault();
+                // If your app is a desktop app that uses the Desktop Bridge, you
+                // may need additional code to configure the StoreContext object.
+                // For more info, see https://aka.ms/storecontext-for-desktop.
+            }
+            
+            StorePurchaseResult result = await context.RequestPurchaseAsync(Item.StoreId);
+
+            // Capture the error message for the operation, if any.
+            string extendedError = string.Empty;
+            if (result.ExtendedError != null)
+            {
+                extendedError = result.ExtendedError.Message;
+            }
+
+            MessageDialog dialog = new MessageDialog("");
+
+            switch (result.Status)
+            {
+                case StorePurchaseStatus.AlreadyPurchased:
+                    dialog.Content = "The user has already purchased the product.";
+                    break;
+
+                case StorePurchaseStatus.Succeeded:
+                    dialog.Content = "The purchase was successful.";
+                    FulfillExport(Item, new Guid());
+                    break;
+
+                case StorePurchaseStatus.NotPurchased:
+                    dialog.Content = "The purchase did not complete. " +
+                        "The user may have cancelled the purchase. ExtendedError: " + extendedError;
+                    break;
+
+                case StorePurchaseStatus.NetworkError:
+                    dialog.Content = "The purchase was unsuccessful due to a network error. " +
+                        "ExtendedError: " + extendedError;
+                    break;
+
+                case StorePurchaseStatus.ServerError:
+                    dialog.Content = "The purchase was unsuccessful due to a server error. " +
+                        "ExtendedError: " + extendedError;
+                    break;
+
+                default:
+                    dialog.Content = "The purchase was unsuccessful due to an unknown error. " +
+                        "ExtendedError: " + extendedError;
+                    break;
+            }
+            await dialog.ShowAsync();
+        }
+
+        private void GrantFeatureLocally(Guid transactionId)
+        {
+            consumedTransactionIds.Add(transactionId);
+
+            // Grant the user their content. You will likely increase some kind of gold/coins/some other asset count.
+            numberOfConsumablesPurchased++;
+        }
+
+        private async void FulfillExport(ItemDetails Item, Guid TrackingID)
+        {
+
+            MessageDialog dialog = new MessageDialog("");
+            try
+            {
+                StoreConsumableResult result = await context.ReportConsumableFulfillmentAsync(Item.StoreId, 1, TrackingID);
+                App.Config.Exports++;
+                App.Config.Save();
+                if (result.ExtendedError != null)
+                {
+                    Utils.ReportExtendedError(result.ExtendedError);
+                    return;
+                }
+
+                switch (result.Status)
+                {
+                    case StoreConsumableStatus.InsufficentQuantity:
+                        dialog.Content = $"Insufficient Quantity! Balance Remaining: {result.BalanceRemaining}";
+                        break;
+
+                    case StoreConsumableStatus.Succeeded:
+                        dialog.Content = $"Successful fulfillment! Balance Remaining: {result.BalanceRemaining}";
+                        break;
+
+                    case StoreConsumableStatus.NetworkError:
+                        dialog.Content = "Network error fulfilling consumable.";
+                        break;
+
+                    case StoreConsumableStatus.ServerError:
+                        dialog.Content = "Server error fulfilling consumable.";
+                        break;
+
+                    default:
+                        dialog.Content = "Unknown error fulfilling consumable.";
+                        break;
+                }
+            }
+            catch (Exception)
+            {
+                dialog.Content = "You bought Product 1. There was an error when fulfilling.";
+            }
+            await dialog.ShowAsync();
+        }
+
+        private bool IsLocallyFulfilled(Guid transactionId)
+        {
+            return consumedTransactionIds.Contains(transactionId);
+        }
     }
+
 
     public static class Utils
     {

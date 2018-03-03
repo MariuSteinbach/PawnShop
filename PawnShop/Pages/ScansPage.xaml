@@ -30,6 +30,10 @@
                 </DataTemplate>
             </ListView.ItemTemplate>
         </ListView>
-        <Button IsEnabled="True" x:Name="btnExport" Click="btnExport_Click" Content="Export" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="0,0,0,0" />
+        <StackPanel Orientation="Horizontal">
+            <Button IsEnabled="True" x:Name="btnExport" Click="btnExport_Click" Content="Export" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="0,0,0,0" />
+            <TextBlock Text="Your Credit: " HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="10,0,0,0" />
+            <TextBlock x:Name="tbCredits" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="0,0,0,0" />
+        </StackPanel>
     </Grid>
 </Page>

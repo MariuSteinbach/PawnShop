@@ -102,6 +102,8 @@
     <Compile Include="MainPage.xaml.cs">
       <DependentUpon>MainPage.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Models\Config.cs" />
+    <Compile Include="Models\Crypter.cs" />
     <Compile Include="Models\Scan.cs" />
     <Compile Include="Models\Pledge.cs" />
     <Compile Include="Pages\HomePage.xaml.cs">

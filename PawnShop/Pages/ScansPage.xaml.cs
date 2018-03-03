@@ -55,8 +55,26 @@ namespace PawnShop.Pages
             }
             sw.Close();
             */
+            if(App.Config.Exports >= Export.Count)
+            {
+                await ExportExcelAsync();
+                App.Config.Exports -= Export.Count;
+                App.Config.Save();
+            }
+            else
+            {
+                MessageDialog msgDialog = new MessageDialog("Do you want to buy more?", "You don't have enough Scans.");
 
-            await ExportExcelAsync();
+                UICommand yesCmd = new UICommand("Yes");
+                msgDialog.Commands.Add(yesCmd);
+                UICommand noCmd = new UICommand("No");
+                msgDialog.Commands.Add(noCmd);
+                IUICommand cmd = await msgDialog.ShowAsync();
+                if (cmd == yesCmd)
+                {
+                    Frame.Navigate(typeof(StorePage));
+                }
+            }
             //await FileIO.WriteTextAsync(sampleFile, "Swift as a shadow");
         }
 
@@ -69,54 +87,6 @@ namespace PawnShop.Pages
             foreach(var item in e.RemovedItems)
             {
                 Export.Remove((Scan)item);
-            }
-        }
-
-        private async Task LoadScans()
-        {
-            IReadOnlyList<StorageFile> storageFiles = null;
-            try
-            {
-                storageFiles = await ApplicationData.Current.LocalFolder.GetFilesAsync();
-                foreach(StorageFile Scan in storageFiles.Where(f => f.Name.Split('.').Last() == "scan"))
-                {
-                    FileStream fs = new FileStream(Scan.Path, FileMode.Open, FileAccess.Read, FileShare.Read);
-                    MemoryStream ms = new MemoryStream();
-                    BinaryFormatter bf = new BinaryFormatter();
-                    Byte[] encrypted = null;
-                    try
-                    {
-                        encrypted = new Byte[fs.Length];
-                        await fs.ReadAsync(encrypted, 0, Convert.ToInt32(fs.Length));
-                    }
-                    catch (SerializationException e)
-                    {
-                        var dialog = new MessageDialog("Failed to load scans. Error: " + e.Message);
-
-                        await dialog.ShowAsync();
-                        throw;
-                    }
-                    finally
-                    {
-                        fs.Close();
-                    }
-                    Byte[] decrypted = Crypter.Decrypt(encrypted);
-                    ms.Write(decrypted, 0, decrypted.Length);
-                    ms.Seek(0, SeekOrigin.Begin);
-                    Scan LoadedScan = (Scan)bf.Deserialize(ms);
-                    if (Scans.Find(s => s.Date == LoadedScan.Date) == null)
-                    {
-                        Scans.Add(LoadedScan);
-                        Frame.Navigate(typeof(ScansPage));
-                    }
-                    
-                }
-            }
-            catch (Exception e)
-            {
-                var dialog = new MessageDialog("Failed to load scans. Error: " + e.Message);
-
-                await dialog.ShowAsync();
             }
         }
 
@@ -210,9 +180,9 @@ namespace PawnShop.Pages
 
         }
 
-        private async void Page_Loaded(object sender, RoutedEventArgs e)
+        private void Page_Loaded(object sender, RoutedEventArgs e)
         {
-            await LoadScans();
+            tbCredits.Text = App.Config.Exports.ToString();
         }
     }
 }
