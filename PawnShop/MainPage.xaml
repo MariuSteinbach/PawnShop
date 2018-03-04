@@ -51,6 +51,7 @@
 
         <NavigationView.PaneFooter>
             <HyperlinkButton x:Name="hbtnMoreInfo"
+                             NavigateUri="https://doxx.tools"
                              Content="More Info"
                              Click="hbtnMoreInfo_Click"
                              Margin="12,0" />

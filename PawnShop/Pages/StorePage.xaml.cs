@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices.WindowsRuntime;
+using System.Threading.Tasks;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
 using Windows.Services.Store;
@@ -27,7 +28,6 @@ namespace PawnShop.Pages
     {
         private HashSet<Guid> consumedTransactionIds = new HashSet<Guid>();
         private StoreContext context = null;
-        private int numberOfConsumablesPurchased = 0;
         public StorePage()
         {
             this.InitializeComponent();
@@ -55,55 +55,9 @@ namespace PawnShop.Pages
             {
                 var dialog = new MessageDialog("Could not load Products...");
             }
-            ProductsListView.ItemsSource = Utils.CreateProductListFromQueryResult(addOns, "Add-Ons");
+            ProductsListView.ItemsSource = await Utils.CreateProductListFromQueryResult(addOns, "Add-Ons");
         }
-
-        public async void GetAppInfo()
-        {
-            if (context == null)
-            {
-                context = StoreContext.GetDefault();
-                // If your app is a desktop app that uses the Desktop Bridge, you
-                // may need additional code to configure the StoreContext object.
-                // For more info, see https://aka.ms/storecontext-for-desktop.
-            }
-            StoreProductResult queryResult = null;
-            // Get app store product details. Because this might take several moments,   
-            // display a ProgressRing during the operation.
-            try
-            {
-                queryResult = await context.GetStoreProductForCurrentAppAsync();
-            }
-            catch (Exception ex)
-            {
-                var exdialog = new MessageDialog(ex.Message);
-                await exdialog.ShowAsync();
-            }
-            var dialog = new MessageDialog("");
-            if (queryResult != null)
-            {
-                if (queryResult.Product == null)
-                {
-                    // The Store catalog returned an unexpected result.
-                    dialog.Content = "Something went wrong, and the product was not returned.";
-
-                    // Show additional error info if it is available.
-                    if (queryResult.ExtendedError != null)
-                    {
-                        dialog.Content += $"\nExtendedError: {queryResult.ExtendedError.Message}";
-                    }
-
-                    await dialog.ShowAsync();
-                    return;
-                }
-            }
-
-            // Display the price of the app.
-            dialog.Content = $"The price of this app is: {queryResult.Product.Price.FormattedBasePrice}";
-
-            await dialog.ShowAsync();
-        }
-
+      
         private async void ProductsListView_ItemClick(object sender, ItemClickEventArgs e)
         {
             ItemDetails Item = (ItemDetails)e.ClickedItem;
@@ -134,7 +88,6 @@ namespace PawnShop.Pages
 
                 case StorePurchaseStatus.Succeeded:
                     dialog.Content = "The purchase was successful.";
-                    FulfillExport(Item, new Guid());
                     break;
 
                 case StorePurchaseStatus.NotPurchased:
@@ -160,59 +113,6 @@ namespace PawnShop.Pages
             await dialog.ShowAsync();
         }
 
-        private void GrantFeatureLocally(Guid transactionId)
-        {
-            consumedTransactionIds.Add(transactionId);
-
-            // Grant the user their content. You will likely increase some kind of gold/coins/some other asset count.
-            numberOfConsumablesPurchased++;
-        }
-
-        private async void FulfillExport(ItemDetails Item, Guid TrackingID)
-        {
-
-            MessageDialog dialog = new MessageDialog("");
-            try
-            {
-                StoreConsumableResult result = await context.ReportConsumableFulfillmentAsync(Item.StoreId, 1, TrackingID);
-                App.Config.Exports++;
-                App.Config.Save();
-                if (result.ExtendedError != null)
-                {
-                    Utils.ReportExtendedError(result.ExtendedError);
-                    return;
-                }
-
-                switch (result.Status)
-                {
-                    case StoreConsumableStatus.InsufficentQuantity:
-                        dialog.Content = $"Insufficient Quantity! Balance Remaining: {result.BalanceRemaining}";
-                        break;
-
-                    case StoreConsumableStatus.Succeeded:
-                        dialog.Content = $"Successful fulfillment! Balance Remaining: {result.BalanceRemaining}";
-                        break;
-
-                    case StoreConsumableStatus.NetworkError:
-                        dialog.Content = "Network error fulfilling consumable.";
-                        break;
-
-                    case StoreConsumableStatus.ServerError:
-                        dialog.Content = "Server error fulfilling consumable.";
-                        break;
-
-                    default:
-                        dialog.Content = "Unknown error fulfilling consumable.";
-                        break;
-                }
-            }
-            catch (Exception)
-            {
-                dialog.Content = "You bought Product 1. There was an error when fulfilling.";
-            }
-            await dialog.ShowAsync();
-        }
-
         private bool IsLocallyFulfilled(Guid transactionId)
         {
             return consumedTransactionIds.Contains(transactionId);
@@ -222,7 +122,7 @@ namespace PawnShop.Pages
 
     public static class Utils
     {
-        public static ObservableCollection<ItemDetails>
+        public async static Task<ObservableCollection<ItemDetails>>
             CreateProductListFromQueryResult(StoreProductQueryResult addOns, string description)
         {
             var productList = new ObservableCollection<ItemDetails>();
@@ -233,13 +133,17 @@ namespace PawnShop.Pages
             }
             else if (addOns.Products.Count == 0)
             {
-                //MainPage.Current.NotifyUser($"No configured {description} found for this Store Product.", NotifyType.ErrorMessage);
+                MessageDialog dialog = new MessageDialog("No Add-Ons found for this App...");
+                await dialog.ShowAsync();
             }
             else
             {
                 foreach (StoreProduct product in addOns.Products.Values)
                 {
-                    productList.Add(new ItemDetails(product));
+                    if (product.StoreId == "9PPLX2HDLV2L")
+                    {
+                        productList.Add(new ItemDetails(product));
+                    }
                 }
             }
             return productList;
@@ -268,8 +172,8 @@ namespace PawnShop.Pages
         public string Price { get; private set; }
         public bool InCollection { get; private set; }
         public string ProductKind { get; private set; }
-        public string StoreId { get; private set; }
-        public string FormattedTitle => $"{Title} ({ProductKind}) {Price}, InUserCollection:{InCollection}";
+        public string StoreId { get; set; }
+        public string FormattedTitle => $"{Title} {Price}";
 
         public ItemDetails(StoreProduct product)
         {

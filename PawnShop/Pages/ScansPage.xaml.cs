@@ -23,6 +23,7 @@ using System.Runtime.Serialization.Formatters.Binary;
 using System.Collections;
 using System.Runtime.Serialization;
 using System.ComponentModel;
+using Windows.Services.Store;
 
 // The Blank Page item template is documented at https://go.microsoft.com/fwlink/?LinkId=234238
 
@@ -35,31 +36,41 @@ namespace PawnShop.Pages
     {
         private List<Scan> Scans;
         private List<Scan> Export;
-   
+        private StoreContext context = null;
+
         public ScansPage()
         {
             this.InitializeComponent();
             Scans = App.Scans;
             Export = new List<Scan>();
+            context = StoreContext.GetDefault();
         }
 
         private async void btnExport_Click(object sender, RoutedEventArgs e)
         {
-            /*
-            StorageFile sampleFile = await ApplicationData.Current.LocalFolder.CreateFileAsync("sample.csv", CreationCollisionOption.ReplaceExisting);
-            var sw = new StreamWriter(sampleFile.Path);
-            var csv = new CsvWriter(sw);
-            foreach(Scan Scan in Scans)
+            StoreConsumableResult singles = await context.GetConsumableBalanceRemainingAsync("9PPLX2HDLV2L");
+
+            if (singles.BalanceRemaining >= Export.Count)
             {
-                csv.WriteRecords(Scan.Pledges);
-            }
-            sw.Close();
-            */
-            if(App.Config.Exports >= Export.Count)
-            {
-                await ExportExcelAsync();
-                App.Config.Exports -= Export.Count;
-                App.Config.Save();
+                bool NoError = true;
+                foreach (Scan Scan in Export)
+                {
+                    StoreConsumableResult result = await context.ReportConsumableFulfillmentAsync("9PPLX2HDLV2L", Convert.ToUInt32(Export.Count), new Guid());
+                    if(result.Status != StoreConsumableStatus.Succeeded)
+                    {
+                        NoError = false;
+                        break;
+                    }
+                }
+                if (NoError)
+                {
+                    await ExportExcelAsync();
+                }
+                else
+                {
+                    MessageDialog msgDialog = new MessageDialog("Something went wrong when trying to subtract the Credits.", "Ooops.");
+                    await msgDialog.ShowAsync();
+                }
             }
             else
             {
@@ -72,10 +83,10 @@ namespace PawnShop.Pages
                 IUICommand cmd = await msgDialog.ShowAsync();
                 if (cmd == yesCmd)
                 {
+                    // TODO: Better Navigation from frmMain
                     Frame.Navigate(typeof(StorePage));
                 }
             }
-            //await FileIO.WriteTextAsync(sampleFile, "Swift as a shadow");
         }
 
         private void lvScans_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -182,7 +193,14 @@ namespace PawnShop.Pages
 
         private void Page_Loaded(object sender, RoutedEventArgs e)
         {
-            tbCredits.Text = App.Config.Exports.ToString();
+            SetCredits();
+        }
+
+        private async void SetCredits()
+        {
+            StoreConsumableResult singles = await context.GetConsumableBalanceRemainingAsync("9PPLX2HDLV2L");
+
+            tbCredits.Text = $"{singles.BalanceRemaining} Scan";
         }
     }
 }

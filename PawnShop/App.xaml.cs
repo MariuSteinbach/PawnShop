@@ -30,7 +30,6 @@ namespace PawnShop
     sealed partial class App : Application
     {
         public static List<Scan> Scans { get; set; }
-        public static Config Config { get; set; }
 
         // Excel Interop
         public static BackgroundTaskDeferral AppServiceDeferral;
@@ -44,26 +43,12 @@ namespace PawnShop
         {
             this.InitializeComponent();
             Scans = new List<Scan>();
-            Config = new Config();
-            LoadConfig();
             LoadScans();
 
             AppServiceDeferral = null;
             Connection = null;
 
             this.Suspending += OnSuspending;
-        }
-
-        public async void LoadConfig()
-        {
-            if(! await Config.Load())
-            {
-                Config = new Config
-                {
-                    Exports = 0
-                };
-                Config.Save();
-            }
         }
 
         private async void LoadScans()
