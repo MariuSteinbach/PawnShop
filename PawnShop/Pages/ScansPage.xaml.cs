@@ -55,10 +55,12 @@ namespace PawnShop.Pages
                 bool NoError = true;
                 foreach (Scan Scan in Export)
                 {
-                    StoreConsumableResult result = await context.ReportConsumableFulfillmentAsync("9PPLX2HDLV2L", Convert.ToUInt32(Export.Count), new Guid());
-                    if(result.Status != StoreConsumableStatus.Succeeded)
+                    StoreConsumableResult result = await context.ReportConsumableFulfillmentAsync("9PPLX2HDLV2L", Convert.ToUInt32(1), new Guid());
+                    if(result.Status != StoreConsumableStatus.Succeeded || result.ExtendedError != null)
                     {
                         NoError = false;
+                        MessageDialog dialog = new MessageDialog(result.ExtendedError.Message);
+                        await dialog.ShowAsync();
                         break;
                     }
                 }
